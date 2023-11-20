@@ -1,0 +1,216 @@
+#define HUF_DECOMPRESS_WORKSPACE_SIZE_U32 (HUF_DECOMPRESS_WORKSPACE_SIZE / sizeof(U32))=2048/4=512
+
+#define ZSTD_BUILD_FSE_TABLE_WKSP_SIZE (sizeof(S16) * (MaxSeq + 1) + (1u << MaxFSELog) + sizeof(U64))
+2*53+512+4=622
+#define ZSTD_BUILD_FSE_TABLE_WKSP_SIZE_U32 ((ZSTD_BUILD_FSE_TABLE_WKSP_SIZE + sizeof(U32) - 1) / sizeof(U32))
+(622+4-1)/4=156
+#define HUF_DECOMPRESS_WORKSPACE_SIZE (2 << 10) =2048
+
+#define HUF_DECOMPRESS_WORKSPACE_SIZE_U32 (HUF_DECOMPRESS_WORKSPACE_SIZE / sizeof(U32)) = 512
+#define FSE_BUILD_DTABLE_WKSP_SIZE(maxTableLog, maxSymbolValue) (sizeof(short) * (maxSymbolValue + 1) + (1ULL << maxTableLog) + 8)
+#define FSE_BUILD_DTABLE_WKSP_SIZE_U32(maxTableLog, maxSymbolValue) ((FSE_BUILD_DTABLE_WKSP_SIZE(maxTableLog, maxSymbolValue) + sizeof(unsigned) - 1) / sizeof(unsigned))
+#define FSE_CTABLE_SIZE_U32(maxTableLog, maxSymbolValue)   (1 + (1<<((maxTableLog)-1)) + (((maxSymbolValue)+1)*2))
+#define FSE_DTABLE_SIZE_U32(maxTableLog)                   (1 + (1<<(maxTableLog)))
+#define FSE_DECOMPRESS_WKSP_SIZE_U32(maxTableLog, maxSymbolValue) (FSE_DTABLE_SIZE_U32(maxTableLog) + FSE_BUILD_DTABLE_WKSP_SIZE_U32(maxTableLog, maxSymbolValue))
+#define FSE_DECOMPRESS_WKSP_SIZE(maxTableLog, maxSymbolValue) (FSE_DECOMPRESS_WKSP_SIZE_U32(maxTableLog, maxSymbolValue) * sizeof(unsigned))
+
+#define HUF_READ_STATS_WORKSPACE_SIZE_U32 FSE_DECOMPRESS_WKSP_SIZE_U32(6, 11)=40
+65+FSE_BUILD_DTABLE_WKSP_SIZE_U32(6, 11)==>(65+FSE_BUILD_DTABLE_WKSP_SIZE(6, 11)+4-1)/4
+==>(65+2*12+64+6+4-1)/4=40
+#define HUF_READ_STATS_WORKSPACE_SIZE (HUF_READ_STATS_WORKSPACE_SIZE_U32 * sizeof(unsigned))
+
+RETURN_ERROR_IF
+#define RETURN_ERROR_IF(cond, err, ...) \
+  if (cond) { \
+    RAWLOG(3, "%s:%d: ERROR!: check %s failed, returning %s", \
+           __FILE__, __LINE__, ZSTD_QUOTE(cond), ZSTD_QUOTE(ERROR(err))); \
+    _FORCE_HAS_FORMAT_STRING(__VA_ARGS__); \
+    RAWLOG(3, ": " __VA_ARGS__); \
+    RAWLOG(3, "\n"); \
+    return ERROR(err); \
+  }
+#define CHECK_DBOUNDS(p,v) begin                \
+    RETURN_ERROR_IF(!ZSTD_dParam_withinBounds(p, v), parameter_outOfBound, ''); \
+    if (ERR_isError(ZSTD_dParam_withinBounds(p, v))<>0) then
+			exit(err);
+end;
+
+#define FORWARD_IF_ERROR(err, ...) \
+  do { \
+    size_t const err_code = (err); \
+    if (ERR_isError(err)<>0) then
+			exit(err);
+      RAWLOG(3, "%s:%d: ERROR!: forwarding error in %s: %s", \
+             __FILE__, __LINE__, ZSTD_QUOTE(err), ERR_getErrorName(err_code)); \
+      _FORCE_HAS_FORMAT_STRING(__VA_ARGS__); \
+      RAWLOG(3, ": " __VA_ARGS__); \
+      RAWLOG(3, "\n"); \
+      exit(err); \
+    } \
+  } while(0);
+	
+/* check and forward error code */
+#define CHECK_V_F(e, f) size_t const e = f; if (ERR_isError(e)) return e
+if (ERR_isError(err)<>0) then
+	exit(err);
+#define CHECK_F(f)   { CHECK_V_F(_var_err__, f); }
+
+
+
+
+#define PREFETCH_AREA(p, s)  {            \
+    const char* const _ptr = (const char*)(p);  \
+    size_t const _size = (size_t)(s);     \
+    size_t _pos;                          \
+    for (_pos=0; _pos<_size; _pos+=CACHELINE_SIZE) {  \
+        PREFETCH_L2(_ptr + _pos);         \
+    }                                     \
+}
+#define HUF_DECODE_SYMBOLX1_0(ptr, DStreamPtr) \
+    *ptr++ := HUF_decodeSymbolX1(DStreamPtr, dt, dtLog)
+        p^ := HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+        inc(p);  
+				
+#define HUF_DECODE_SYMBOLX1_1(ptr, DStreamPtr)  \
+    if (MEM_64bits()  or  (HUF_TABLELOG_MAX<=12)) \
+        HUF_DECODE_SYMBOLX1_0(ptr, DStreamPtr)
+        {$ifdef CPU64}
+          p^ := HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+          inc(p);
+        {$else}
+        if (HUF_TABLELOG_MAX<=12) then
+        begin
+          p^ := HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+          inc(p);
+        end;
+        {$endif}
+				 
+
+#define HUF_DECODE_SYMBOLX1_2(ptr, DStreamPtr) \
+    if (MEM_64bits()) \
+        HUF_DECODE_SYMBOLX1_0(ptr, DStreamPtr)
+				
+        {$ifdef CPU64}
+            p^ := HUF_decodeSymbolX1(bitDPtr, dt, dtLog);
+            inc(p);
+        {$endif}
+				
+#define HUF_DECODE_SYMBOLX2_0(ptr, DStreamPtr) \
+    ptr +:= HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+		
+		ptr :=ptr + HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+#define HUF_DECODE_SYMBOLX2_1(ptr, DStreamPtr) \
+    if (MEM_64bits()  or  (HUF_TABLELOG_MAX<=12)) \
+        ptr +:= HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+				
+        {$ifdef CPU64}
+          ptr :=ptr + HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+        {$else}
+        if (HUF_TABLELOG_MAX<=12) then
+        begin
+					ptr :=ptr + HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+        end;
+        {$endif}
+				
+#define HUF_DECODE_SYMBOLX2_2(ptr, DStreamPtr) \
+    if (MEM_64bits()) \
+        ptr +:= HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)   
+				
+        {$ifdef CPU64}
+            ptr :=ptr + HUF_decodeSymbolX2(ptr, DStreamPtr, dt, dtLog)
+        {$endif}
+				
+-------------------------------------------Stringizing operator (#)------------------------
+The following preprocessor turns the line printf(mkstr(geeksforgeeks)); into printf(“geeksforgeeks”);
+
+// CPP program to illustrate (#) operator 
+#include <stdio.h> 
+#define mkstr(s) #s 
+int main(void) 
+{ 
+    printf(mkstr(geeksforgeeks)); 
+    return 0; 
+} 
+Output:
+
+geeksforgeeks
+-------------------------------------------Token-pasting operator (##)------------------------
+
+The preprocessor transforms printf(“%d”, concat(x, y)); into printf(“%d”, xy);
+
+// CPP program to illustrate (##) operator 
+#include <stdio.h> 
+#define concat(a, b) a##b 
+int main(void) 
+{ 
+    int xy = 30; 
+    printf("%d", concat(x, y)); 
+    return 0; 
+} 
+Output:
+
+30
+
+#if DYNAMIC_BMI2
+
+#define HUF_DGEN(fn)                                                        \
+                                                                            \
+    static size_t fn##_default(                                             \
+                  void* dst,  size_t dstSize,                               \
+            const void* cSrc, size_t cSrcSize,                              \
+            const HUF_DTable* DTable)                                       \
+    {                                                                       \
+        return fn##_body(dst, dstSize, cSrc, cSrcSize, DTable);             \
+    }                                                                       \
+                                                                            \
+    static TARGET_ATTRIBUTE("bmi2") size_t fn##_bmi2(                       \
+                  void* dst,  size_t dstSize,                               \
+            const void* cSrc, size_t cSrcSize,                              \
+            const HUF_DTable* DTable)                                       \
+    {                                                                       \
+        return fn##_body(dst, dstSize, cSrc, cSrcSize, DTable);             \
+    }                                                                       \
+                                                                            \
+    static size_t fn(void* dst, size_t dstSize, void const* cSrc,           \
+                     size_t cSrcSize, HUF_DTable const* DTable, int bmi2)   \
+    {                                                                       \
+        if (bmi2) {                                                         \
+            return fn##_bmi2(dst, dstSize, cSrc, cSrcSize, DTable);         \
+        }                                                                   \
+        return fn##_default(dst, dstSize, cSrc, cSrcSize, DTable);          \
+    }
+
+#else
+
+#define HUF_DGEN(fn)                                                        \
+    static size_t fn(void* dst, size_t dstSize, void const* cSrc,           \
+                     size_t cSrcSize, HUF_DTable const* DTable, int bmi2)   \
+    {                                                                       \
+        (void)bmi2;                                                         \
+        return fn##_body(dst, dstSize, cSrc, cSrcSize, DTable);             \
+    }
+
+#endif
+#define HUF_DTABLE_SIZE(maxTableLog)   (1 + (1<<(maxTableLog)))
+#define HUF_CREATE_STATIC_DTABLEX1(DTable, maxTableLog) \
+        HUF_DTable DTable[HUF_DTABLE_SIZE((maxTableLog)-1)] = { ((U32)((maxTableLog)-1) * 0x01000001) }
+				??吓???
+var
+  DTable:array [0..((1 + (1 shl (HUF_TABLELOG_MAX)))-1)] of HUF_DTable;
+begin
+    fillbyte(DTable,sizeof(DTable),$01000001);
+		
+#define HUF_CREATE_STATIC_DTABLEX2(DTable, maxTableLog) \
+        HUF_DTable DTable[HUF_DTABLE_SIZE(maxTableLog)] = { ((U32)(maxTableLog) * 0x01000001) }
+				
+var
+  DTable:array [0..(1 + (1 shl (HUF_TABLELOG_MAX)))] of HUF_DTable;
+begin
+    fillbyte(DTable,sizeof(DTable),$01000001);
+		
+				HUF_DTable DTable[(1 + (1<<(HUF_TABLELOG_MAX)))] = { ((U32)(HUF_TABLELOG_MAX) * 0x01000001) }
+				
+#define LONG_OFFSETS_MAX_EXTRA_BITS_32                       \
+    (ZSTD_WINDOWLOG_MAX_32=30 > STREAM_ACCUMULATOR_MIN_32=25       \
+        ? ZSTD_WINDOWLOG_MAX_32 - STREAM_ACCUMULATOR_MIN_32  \
+        : 0)
